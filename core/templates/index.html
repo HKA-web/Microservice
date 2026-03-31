@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Meluncur - PS2 Clean</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+
+        .ui-overlay {
+            position: relative;
+            z-index: 10;
+            pointer-events: none;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ps2-text {
+            color: #fff;
+            text-shadow: 0 0 15px rgba(0, 162, 255, 0.6);
+            letter-spacing: 0.4em;
+            opacity: 0;
+            transform: translateY(15px);
+            animation: ps2-fade-in 2.5s ease-out forwards 0.5s;
+        }
+
+        @keyframes ps2-fade-in {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .status-pill {
+            background: rgba(0, 100, 255, 0.05);
+            border: 1px solid rgba(0, 162, 255, 0.2);
+            backdrop-filter: blur(8px);
+            pointer-events: auto;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .status-pill:hover {
+            background: rgba(0, 162, 255, 0.1);
+            border-color: rgba(0, 162, 255, 0.6);
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(0, 162, 255, 0.4);
+        }
+
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            z-index: 5;
+            background: linear-gradient(
+                to bottom,
+                rgba(18, 16, 16, 0) 50%,
+                rgba(0, 0, 0, 0.08) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        .ps-symbols {
+            font-size: 20px;
+            display: flex;
+            gap: 2rem;
+            color: rgba(255, 255, 255, 0.15);
+            margin-top: 3rem;
+            text-shadow: 0 0 10px rgba(0, 162, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    <div class="scanlines"></div>
+
+    <div class="ui-overlay">
+        <div class="text-center px-6">
+            <h1 class="ps2-text text-5xl md:text-7xl font-bold mb-6 tracking-[0.2em]">
+                MICROSERVICE <span class="text-blue-500/80">SIAP</span>
+            </h1>
+
+            <p class="ps2-text text-xs md:text-sm text-blue-200/40 font-light mb-16 tracking-[0.5em] delay-500 uppercase">
+                Konfigurasi Berhasil
+            </p>
+
+            <div class="ps2-text flex justify-center delay-700">
+                <div class="status-pill px-10 py-4 rounded-lg flex items-center gap-5 cursor-pointer group">
+                    <div class="w-2.5 h-2.5 bg-blue-400 rounded-full animate-ping"></div>
+                    <div class="w-2.5 h-2.5 bg-blue-500 rounded-full absolute"></div>
+                    <span class="text-[10px] tracking-[0.6em] font-bold text-blue-100 uppercase opacity-70 group-hover:opacity-100 transition-opacity">Dokumentasi</span>
+                </div>
+            </div>
+
+            <div class="ps2-text ps-symbols delay-1000 justify-center">
+                <span>△</span> <span>○</span> <span>✕</span> <span>□</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, starField, ringParticles;
+
+        function init() {
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000208);
+            scene.fog = new THREE.FogExp2(0x000515, 0.012);
+
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 50);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // 2. Ambience Particles (The "Stars" or "Motes")
+            const starCount = 1500;
+            const starGeo = new THREE.BufferGeometry();
+            const starPos = new Float32Array(starCount * 3);
+            const starVel = new Float32Array(starCount);
+
+            for (let i = 0; i < starCount * 3; i++) {
+                starPos[i] = (Math.random() - 0.5) * 150;
+            }
+
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const starMat = new THREE.PointsMaterial({
+                color: 0x4488ff,
+                size: 0.25,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+
+            starField = new THREE.Points(starGeo, starMat);
+            scene.add(starField);
+
+            // 3. Floating Rings (The "Orbital" effect)
+            const ringCount = 2000;
+            const ringGeo = new THREE.BufferGeometry();
+            const ringPos = new Float32Array(ringCount * 3);
+
+            for (let i = 0; i < ringCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 25 + Math.random() * 5;
+                const spread = (Math.random() - 0.5) * 10;
+
+                ringPos[i * 3] = Math.cos(angle) * radius;
+                ringPos[i * 3 + 1] = spread;
+                ringPos[i * 3 + 2] = Math.sin(angle) * radius;
+            }
+
+            ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPos, 3));
+            const ringMat = new THREE.PointsMaterial({
+                color: 0x00a2ff,
+                size: 0.15,
+                transparent: true,
+                opacity: 0.4,
+                blending: THREE.AdditiveBlending
+            });
+
+            ringParticles = new THREE.Points(ringGeo, ringMat);
+            scene.add(ringParticles);
+
+            // 4. Central Energy Core
+            const coreGeo = new THREE.SphereGeometry(12, 32, 32);
+            const coreMat = new THREE.MeshPhongMaterial({
+                color: 0x002244,
+                emissive: 0x0044aa,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.1
+            });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            scene.add(core);
+            this.core = core;
+
+            // Lights
+            const light = new THREE.PointLight(0x0066ff, 3, 100);
+            light.position.set(0, 0, 0);
+            scene.add(light);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.0005;
+
+            // Camera movement - slow orbit
+            camera.position.x = Math.sin(time * 0.1) * 60;
+            camera.position.z = Math.cos(time * 0.1) * 60;
+            camera.lookAt(0, 0, 0);
+
+            // Rotate starfield
+            starField.rotation.y += 0.0005;
+            starField.rotation.x += 0.0002;
+
+            // Rotate rings
+            ringParticles.rotation.y -= 0.002;
+            ringParticles.rotation.z += 0.001;
+
+            // Pulse core
+            if (this.core) {
+                const scale = 1 + Math.sin(time * 2) * 0.05;
+                this.core.scale.set(scale, scale, scale);
+                this.core.rotation.y += 0.005;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Interaction
+        document.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth - 0.5) * 10;
+            const y = (e.clientY / window.innerHeight - 0.5) * 10;
+            camera.position.y = 5 + y;
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        window.onload = init;
+    </script>
+</body>
+</html>
