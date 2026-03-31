@@ -16,7 +16,6 @@ bin/nginx/nginx.pid
 empty.zip
 
 # ignore module here
-whatsapp/
 
 # force include here
 !bin/nodejs/node_modules/

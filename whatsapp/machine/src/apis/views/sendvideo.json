@@ -1,0 +1,175 @@
+{
+  "paths": {
+    "/api/send-video": {
+      "post": {
+        "summary": "Kirim video WhatsApp (single atau multi)",
+        "tags": ["WhatsApp"],
+        "description": "Gunakan `_botDevice` untuk memilih device tertentu. Jika tidak diberikan, session pertama akan dipakai.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "_botDevice": {
+                        "type": "string",
+                        "description": "Device ID / nomor WA"
+                      },
+                      "jid": {
+                        "type": "string",
+                        "description": "Nomor WhatsApp tujuan (format: 628xxx@s.whatsapp.net)"
+                      },
+                      "videoUrl": {
+                        "type": "string",
+                        "description": "URL video (https://...)"
+                      },
+                      "caption": {
+                        "type": "string",
+                        "description": "Caption video",
+                        "nullable": true
+                      },
+                      "fileName": {
+                        "type": "string",
+                        "description": "Nama file video (opsional)",
+                        "nullable": true
+                      }
+                    },
+                    "required": ["jid", "videoUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "_botDevice": {
+                        "type": "string",
+                        "description": "Device ID / nomor WA"
+                      },
+                      "videos": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "jid": {
+                              "type": "string",
+                              "description": "Nomor WhatsApp tujuan"
+                            },
+                            "videoUrl": {
+                              "type": "string",
+                              "description": "URL video (https://...)"
+                            },
+                            "caption": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "fileName": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": ["jid", "videoUrl"]
+                        }
+                      }
+                    },
+                    "required": ["videos"]
+                  }
+                ]
+              },
+              "examples": {
+                "singleVideo": {
+                  "summary": "Kirim satu video",
+                  "value": {
+                    "_botDevice": "6285183xxxxxxx",
+                    "jid": "628564xxxxx@s.whatsapp.net",
+                    "videoUrl": "https://example.com/video.mp4",
+                    "caption": "Ini video dari bot 🎬",
+                    "fileName": "promo.mp4"
+                  }
+                },
+                "multiVideo": {
+                  "summary": "Kirim banyak video sekaligus",
+                  "value": {
+                    "_botDevice": "6285183xxxxxxx",
+                    "videos": [
+                      {
+                        "jid": "628564xxxxx@s.whatsapp.net",
+                        "videoUrl": "https://example.com/video1.mp4",
+                        "caption": "Video pertama"
+                      },
+                      {
+                        "jid": "628121xxxxxx@s.whatsapp.net",
+                        "videoUrl": "https://example.com/video2.mp4",
+                        "caption": "Video kedua"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil pengiriman video per nomor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "jid": { "type": "string" },
+                          "error": { "type": "string", "nullable": true }
+                        }
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "successAll": {
+                    "summary": "Semua video berhasil",
+                    "value": {
+                      "data": [
+                        { "jid": "628564xxxxx@s.whatsapp.net", "error": null },
+                        { "jid": "628121xxxxxx@s.whatsapp.net", "error": null }
+                      ]
+                    }
+                  },
+                  "partialError": {
+                    "summary": "Beberapa video gagal",
+                    "value": {
+                      "data": [
+                        { "jid": "628564xxxxx@s.whatsapp.net", "error": null },
+                        { "jid": "628121xxxxxx@s.whatsapp.net", "error": "Socket WA belum siap" }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Device tidak ditemukan atau field wajib tidak ada",
+            "content": {
+              "application/json": {
+                "example": { "error": "Device tidak ditemukan" }
+              }
+            }
+          },
+          "500": {
+            "description": "Tidak ada device WA aktif atau socket belum siap",
+            "content": {
+              "application/json": {
+                "example": { "error": "Tidak ada device WA aktif" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
