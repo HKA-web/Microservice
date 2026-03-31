@@ -1,0 +1,54 @@
+ALLOWED_HOSTS:
+  - '*'
+
+DEBUG: true
+
+SECURE_SSL_REDIRECT: false
+
+SITE_ID: 1
+
+DATABASES_DEFAULT: postgres
+
+DATABASES.postgres.ENGINE: django.db.backends.postgresql
+DATABASES.postgres.HOST: 127.0.0.1
+DATABASES.postgres.PORT: 5432
+DATABASES.postgres.NAME: microservice
+DATABASES.postgres.USER: postgres
+DATABASES.postgres.PASSWORD: root
+
+#DATABASES.HRMS:
+#  ENGINE: django.db.backends.postgresql
+#  HOST: 192.168.6.25
+#  NAME: HRMS.NSNJRM
+#  USER: postgres
+#  PASSWORD: '@hC1_5*HrMs4%8'
+#  PORT: 17296
+#  MIGRATE: false
+#  ATOMIC_REQUESTS: false
+#  CONN_HEALTH_CHECKS: true
+#  VERSION_CHECK: false
+#
+#DATABASES.SIDIA:
+#  ENGINE: library.pyodbc
+#  NAME: master
+#  USER: sa
+#  PASSWORD: PASSWORDSETUPSRVNUSANTARA
+#  HOST: 'np:\\192.168.6.51\pipe\sql\query'
+#  OPTIONS:
+#    driver: '{SQL Server}'
+#    version: 2000
+#  ATOMIC_REQUESTS: false
+#  VERSION_CHECK: false
+
+
+CHANNEL_DEFAULT: memory
+CHANNEL_MSGPACK: true
+
+
+CACHES_DEFAULT: dummy
+
+INSTALLED_MODULE:
+  - core
+
+MANAGE_CLEAR_CONSOLE: true
+NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]

@@ -1,0 +1,29 @@
+ALLOWED_HOSTS:
+  - '*'
+
+DEBUG: true
+
+SECURE_SSL_REDIRECT: false
+
+SITE_ID: 1
+
+DATABASES_DEFAULT: postgres
+
+DATABASES.postgres.ENGINE: django.db.backends.postgresql
+DATABASES.postgres.HOST: 127.0.0.1
+DATABASES.postgres.PORT: 5432
+DATABASES.postgres.NAME: microservice
+DATABASES.postgres.USER: postgres
+DATABASES.postgres.PASSWORD: root
+
+CHANNEL_DEFAULT: memory
+CHANNEL_MSGPACK: true
+
+
+CACHES_DEFAULT: dummy
+
+INSTALLED_MODULE:
+  - core
+
+MANAGE_CLEAR_CONSOLE: true
+NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]
