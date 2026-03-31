@@ -7,6 +7,21 @@ SECURE_SSL_REDIRECT: false
 
 SITE_ID: 1
 
+CHANNEL_DEFAULT: memory
+CHANNEL_MSGPACK: true
+
+
+CACHES_DEFAULT: dummy
+
+INSTALLED_MODULE:
+  - core
+
+MANAGE_CLEAR_CONSOLE: true
+NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]
+
+WHATSAPP.PORT: 3000
+WHATSAPP.WEBHOOK_URL: http://127.0.0.1:8000/whatsapp/webhook/
+
 DATABASES_DEFAULT: postgres
 
 DATABASES.postgres.ENGINE: django.db.backends.postgresql
@@ -39,16 +54,3 @@ DATABASES.postgres.PASSWORD: root
 #    version: 2000
 #  ATOMIC_REQUESTS: false
 #  VERSION_CHECK: false
-
-
-CHANNEL_DEFAULT: memory
-CHANNEL_MSGPACK: true
-
-
-CACHES_DEFAULT: dummy
-
-INSTALLED_MODULE:
-  - core
-
-MANAGE_CLEAR_CONSOLE: true
-NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]

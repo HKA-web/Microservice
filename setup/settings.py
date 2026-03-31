@@ -98,6 +98,11 @@ DATABASES = {
     },
 }
 
+WHATSAPP = {
+    'PORT': 3000,
+    'WEBHOOK_URL': 'http://127.0.0.1:8000/whatsapp/webhook/',
+}
+
 SITE_ID = 1
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'

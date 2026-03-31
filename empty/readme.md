@@ -5,3 +5,4 @@ Ini adalah module struktur awal, apabila ingin membangun sebuah module baru.
 - \apps.py  
 - \settings.py  
 - \urls.py  
+- \apis\urls.py  
