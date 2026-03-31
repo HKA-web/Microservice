@@ -19,11 +19,11 @@ INSTALLED_MODULE:
 MANAGE_CLEAR_CONSOLE: true
 NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]
 
-WHATSAPP.PORT: 3000
+WHATSAPP.PORT: 3001
 WHATSAPP.WEBHOOK_URL: http://127.0.0.1:8000/whatsapp/webhook/
+WHATSAPP.DOCS: http://localhost:3001/docs/
 
 DATABASES_DEFAULT: postgres
-
 DATABASES.postgres.ENGINE: django.db.backends.postgresql
 DATABASES.postgres.HOST: 127.0.0.1
 DATABASES.postgres.PORT: 5432

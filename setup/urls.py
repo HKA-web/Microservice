@@ -19,20 +19,6 @@ register_converter(Base64PkConverter, Base64PkConverter.name)
 key = ShortUUID().random(length=10)
 
 
-def logo(request, dimen='hdpi'):
-    import os
-    try:
-        logo = os.path.join(settings.STATIC_ROOT, f'{settings.PROJECT['LOGO']}.{dimen}.png')
-        if not os.path.exists(logo):
-            logo = os.path.join(settings.STATIC_ROOT, f'application/media/erpro.{dimen}.png')
-        with open(logo, 'rb') as file:
-            logo = file.read()
-            file.close()
-        return HttpResponse(logo, content_type='image/png')
-    except IOError as e:
-        return HttpResponseNotFound(str(e))
-
-
 def urlpatterns():
     patterns = [
         path('core/', include('core.urls')),
@@ -44,8 +30,6 @@ def urlpatterns():
             path('i18n.json', cache_page(86400, key_prefix='i18n.json?_dc=%s' % key)(JSONCatalog.as_view()), name='i18n-json'),
             path('reverse.js', cache_page(86400, key_prefix='reverse.js?_dc=%s' % key)(reverse.urls_js), name='reverse-js'),
             path('reverse.json', cache_page(86400, key_prefix='reverse.json?_dc=%s' % key)(reverse.urls_json), name='reverse-json'),
-            re_path(r'favicon.ico', cache_page(86400, key_prefix='i18n.js?_dc=%s' % key)(logo), name='logo'),
-            re_path(r'^favicon.(?P<dimen>[^/]+).ico', cache_page(86400, key_prefix='i18n.js?_dc=%s' % key)(logo), name='logo'),
         ]
     else:
         patterns += [
@@ -53,8 +37,6 @@ def urlpatterns():
             path('i18n.json', JSONCatalog.as_view(), name='i18n-json'),
             path('reverse.js', reverse.urls_js, name='reverse-js'),
             path('reverse.json', reverse.urls_json, name='reverse-json'),
-            re_path(r'favicon.ico', logo, name='logo'),
-            re_path(r'^favicon.(?P<dimen>[^/]+).ico', logo, name='logo'),
         ]
     if settings.DEBUG:
         patterns += [

@@ -75,5 +75,6 @@ app.listen(PORT, HOST, () => {
   console.log(`Local:   http://localhost:${PORT}`);
   console.log(`Network: http://${getLocalIP()}:${PORT}`);
   console.log(process.env.SECRET_KEY);
+  console.log(process.env.WEBHOOK_URL);
 });
 

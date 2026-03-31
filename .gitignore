@@ -6,7 +6,7 @@ assets/
 media/
 data/
 env/
-erpro.yaml
+microservice.yaml
 bin/nginx/conf/erpro.conf
 bin/nginx/logs/
 bin/nginx/nginx.pid

@@ -101,6 +101,7 @@ DATABASES = {
 WHATSAPP = {
     'PORT': 3000,
     'WEBHOOK_URL': 'http://127.0.0.1:8000/whatsapp/webhook/',
+    'DOCS': 'http://localhost:3000/docs/',
 }
 
 SITE_ID = 1
