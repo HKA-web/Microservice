@@ -58,36 +58,6 @@ class ApplicationConfig(AppConfig):
                 setattr(djangosettings, 'DICTIONARY', {})
             if not hasattr(djangosettings, 'OPTION'):
                 setattr(djangosettings, 'OPTION', {})
-            try:
-                from core.models import Dictionary
-                for dictionary in Dictionary.objects.all():
-                    data = dict(
-                        name=dictionary.dictionary_name,
-                        data=list(map(lambda dictionarydata: dict(
-                            label=dictionarydata.label,
-                            value=dictionarydata.value,
-                        ), dictionary.core_dictionarydata.all())),
-                    )
-                    if dictionary.key not in djangosettings.DICTIONARY:
-                        djangosettings.DICTIONARY.update({dictionary.key: {}})
-                    if dictionary.company is not None:
-                        djangosettings.DICTIONARY[dictionary.key].update({dictionary.company.pk: data})
-                    else:
-                        djangosettings.DICTIONARY[dictionary.key].update(data)
-                from core.models import Option
-                for option in Option.objects.all():
-                    data = dict(
-                        name=option.option_name,
-                        data=option.data,
-                    )
-                    if option.key not in djangosettings.OPTION:
-                        djangosettings.OPTION.update({option.key: {}})
-                    if option.company is not None:
-                        djangosettings.OPTION[option.key].update({option.company.pk: data})
-                    else:
-                        djangosettings.OPTION[option.key].update(data)
-            except Exception as e:
-                pass
 
             from core.fields import StatusField
             for model in [model for model in apps.get_models() if HistoricalChanges.__name__.lower() not in (
@@ -159,7 +129,7 @@ class ApplicationConfig(AppConfig):
                     setattr(choices, 'queryset', DictionaryData.objects.filter(dictionary__key=dictionary.key, ))
 
                     def company(self, company):
-                        choices = [(data.value, _(data.label)) for data in (
+                        choices = [(data.value, data.label) for data in (
                             getattr(self, 'queryset').filter(dictionary__company=company)
                             if isinstance(company, Company)
                             else getattr(self, 'queryset').filter(dictionary__company_id=company)
@@ -169,92 +139,6 @@ class ApplicationConfig(AppConfig):
                     setattr(Choices, 'company', company)
                     setattr(field, 'choices', choices)
                     setattr(model, StringCase.pascalcase(field.name), choices)
-
-            from core.fields import IdentifierField
-            for model in [model for model in apps.get_models() if HistoricalChanges.__name__.lower() not in (
-                base.__name__.lower() for base in model.__bases__
-            ) and len([field for field in model._meta.get_fields() if isinstance(field, IdentifierField)]) > 0]:
-                for field in [field for field in model._meta.get_fields() if isinstance(field, IdentifierField)]:
-                    from core.middleware import request
-                    from core.models import Company
-                    from authentication.models import ContentType
-                    properties = dict(
-                        application=model._meta.app_label,
-                        model=model._meta.model.__name__,
-                    )
-                    company = Company.objects.filter(
-                        pk=request().session.get('company', djangosettings.PROJECT.get('NAME'))
-                        if request().session is not None
-                        else djangosettings.PROJECT.get('NAME'),
-                    ).first()
-                    content_type = ContentType.objects.get_for_model(model)
-                    from core.models import Sequence
-                    Sequence.objects.get_or_create(
-                        company=company,
-                        content_type=content_type,
-                        defaults=dict(
-                            company=company,
-                            content_type=content_type,
-                            part=field.part,
-                            length=field.length,
-                            prefix=field.prefix,
-                            suffix=field.suffix,
-                            repeater=field.repeater,
-                            counter=field.counter,
-                            properties=properties,
-                            description=_('<p>Used for auto numbering model %(model)s on application %(application)s</p>' % properties),
-                            read_only=True,
-                            enable=True,
-                        )
-                    )
-
-            for model in [model for model in apps.get_models() if HistoricalChanges.__name__.lower() not in (
-                base.__name__.lower() for base in model.__bases__
-            ) and len([field for field in model._meta.get_fields() if isinstance(field, StatusField)]) > 0]:
-                for field in [field for field in model._meta.get_fields() if isinstance(field, StatusField) and field.transition]:
-                    from core.middleware import request
-                    from core.models import (Dictionary, DictionaryData, Company, Transition, TransitionRule, )
-                    from authentication.models import ContentType
-                    from core.utils import StringCase
-                    company = Company.objects.filter(
-                        pk=request().session.get('company', djangosettings.PROJECT.get('NAME'))
-                        if request().session is not None
-                        else djangosettings.PROJECT.get('NAME'),
-                    ).first()
-                    transition, created = Transition.objects.get_or_create(
-                        pk=ContentType.objects.get_for_model(model._meta.model).pk,
-                        defaults=dict(
-                            transition_name=f'{model._meta.app_label}.{model._meta.model.__name__}',
-                            enable=True,
-                        ),
-                    )
-                    if created:
-                        choices = field.prepares if len(field.prepares) else field.choices
-                        choices = [dict(key=key, value=value, ) for key, value in choices]
-                        for index, prepare in enumerate(choices):
-                            if index > 0:
-                                TransitionRule.objects.get_or_create(
-                                    transition=transition,
-                                    company=company,
-                                    field=field.attname,
-                                    source=choices[index - 1]['key'],
-                                    target=prepare['key'],
-                                    defaults=dict(
-                                        transition=transition,
-                                        company=company,
-                                        parent=TransitionRule.objects.filter(
-                                            transition=transition,
-                                            company=company,
-                                            field=field.attname,
-                                            target=choices[index - 1]['key'],
-                                        ).first(),
-                                        field=field.attname,
-                                        source=choices[index - 1]['key'],
-                                        target=prepare['key'],
-                                        rule='''return True''',
-                                        process=[],
-                                    ),
-                                )
 
             modules = []
             for app_config in apps.get_app_configs():

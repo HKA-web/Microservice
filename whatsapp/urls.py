@@ -1,14 +1,19 @@
 import logging
+from pathlib import Path
 
 from django.conf import settings
+from django.http import HttpResponse, HttpResponseNotFound
 from django.urls import path, include, re_path
 
-from empty import views #change this
+from whatsapp import views
 
 logger = logging.getLogger(__name__)
+cwd = Path(__file__).resolve().parent.parent
 
-auto = True
-app_name = 'whatsapp' #change this
+
+app_name = 'whatsapp'
 urlpatterns = [
-    path('api/', include('whatsapp.apis.urls'), name='whatsapp'), #change this
+    re_path(r'^dashboard/$', views.WhatsappView.as_view(), name='dashboard'),
+
+    path('api/', include('whatsapp.apis.urls'), name='whatsapp'),
 ]

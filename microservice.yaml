@@ -7,9 +7,8 @@ SECURE_SSL_REDIRECT: false
 
 SITE_ID: 1
 
-CHANNEL_DEFAULT: memory
+CHANNEL_DEFAULT: redis
 CHANNEL_MSGPACK: true
-
 
 CACHES_DEFAULT: dummy
 
@@ -20,7 +19,7 @@ MANAGE_CLEAR_CONSOLE: true
 NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]
 
 WHATSAPP.PORT: 3001
-WHATSAPP.WEBHOOK_URL: http://127.0.0.1:8000/whatsapp/webhook/
+WHATSAPP.WEBHOOK_URL: http://127.0.0.1:8000/whatsapp/webhook/ # ws://127.0.0.1:8000/ws/whatsapp/webhook/
 WHATSAPP.DOCS: http://localhost:3001/docs/
 
 DATABASES_DEFAULT: postgres

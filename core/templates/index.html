@@ -212,13 +212,12 @@
 </div>
 
 <script>
-    // Data Menu - Link diambil dari Django Variable {{ WHATSAPP_DOCS }}
     const menuData = [
         {
             title: 'WHATSAPP BOT',
             desc: 'PANDUAN INTEGRASI SISTEM BOT DENGAN WHATSAPP',
             icon: '🤖',
-            link: '{{ WHATSAPP_DOCS }}'
+            link: '{% url 'whatsapp:dashboard' %}'
         },
     ];
 

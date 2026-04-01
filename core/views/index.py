@@ -10,5 +10,4 @@ logger = logging.getLogger(__name__)
 class IndexView(View):
     def get(self, request):
         return render(request, 'index.html', dict(
-            WHATSAPP_DOCS= getattr(djangosettings, 'WHATSAPP', {}).get('DOCS', ''),
         ))

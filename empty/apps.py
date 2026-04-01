@@ -11,7 +11,6 @@ class ApplicationConfig(AppConfig):
     name = 'empty' #change this
     verbose_name = _('Empty') #change this
     dependencies = [
-        'authentication',
         'core',
     ]
 

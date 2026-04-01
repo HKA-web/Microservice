@@ -6,8 +6,14 @@ import { deleteSessionFolder } from './utils/config.js';
 import axios from 'axios';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import WebSocket from 'ws';
 
 const sessions = new Map();
+
+const djangoWs = new WebSocket('ws://127.0.0.1:8000/ws/whatsapp/webhook/');
+djangoWs.on('open', () => console.log('✅ Connected to Django WebSocket'));
+djangoWs.on('error', (err) => console.error('❌ Django WS Error:', err.message));
+djangoWs.on('close', () => console.log('⚠️ Django WS Connection Closed.'));
 
 export async function connectToWhatsApp(phoneNumber) {
   const sessionDir = path.resolve(`./src/sessions/${phoneNumber}`);
@@ -34,6 +40,7 @@ export async function connectToWhatsApp(phoneNumber) {
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
     const session = sessions.get(phoneNumber);
+
     if (!session) return;
 
     if (qr) {
@@ -57,6 +64,15 @@ export async function connectToWhatsApp(phoneNumber) {
 		setTimeout(() => connectToWhatsApp(phoneNumber), 5000);
 	  }
 	}
+
+    if (qr && djangoWs.readyState === WebSocket.OPEN) {
+        djangoWs.send(JSON.stringify({
+            event: 'connection.qrcode',
+            session: session,
+            data: { qr: qr }
+        }));
+    }
+
   });
 
   // Handler pesan masuk
@@ -82,8 +98,20 @@ export async function connectToWhatsApp(phoneNumber) {
 	  const messageType = Object.keys(msg.message)[0];
 
 	try {
-		  const session = getSession(phoneNumber);
+		  const session = sessions.get(phoneNumber);
 		  const payload = {
+            event: 'messages.upsert',
+            session: phoneNumber,
+            data: {
+                messages: [msg]
+            },
+            metadata: {
+                phone: phoneNumber,
+                sender: msg.key.remoteJid,
+                push_name: msg.pushName,
+                text: msg.message?.extendedTextMessage?.text || msg.message?.conversation || '',
+                message_type: messageType
+            },
 			bot_device: {
 			  phone: phoneNumber,
 			  user: session?.user || null,
@@ -103,9 +131,12 @@ export async function connectToWhatsApp(phoneNumber) {
 			raw: msg
 		  };
 		  const payloadSize = Buffer.byteLength(JSON.stringify(payload), 'utf8');
-		  
-		  console.log(`[${phoneNumber}] Pesan dari ${sender}: ${JSON.stringify(payload, null, 2)}`);
-		  
+
+          if (djangoWs.readyState === WebSocket.OPEN) {
+            djangoWs.send(JSON.stringify(payload));
+          }
+		  /*console.log(`[${phoneNumber}] Pesan dari ${sender}: ${JSON.stringify(payload, null, 2)}`);*/
+
 		  if (text.trim().toLowerCase() === 'ping') {
 			await sock.sendMessage(sender, 
 				{ text: 'pong 🏓', },

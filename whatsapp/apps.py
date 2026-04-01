@@ -11,7 +11,6 @@ class ApplicationConfig(AppConfig):
     name = 'whatsapp' #change this
     verbose_name = _('Whatsapp') #change this
     dependencies = [
-        'authentication',
         'core',
     ]
 

@@ -42,10 +42,12 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 INSTALLED_LIBRARY = [
+    'daphne',
     'django.contrib.contenttypes',
     'django.contrib.sites',
     'django.contrib.staticfiles',
     'django.contrib.auth',
+    'django.contrib.sessions',
     'rest_framework',
     'channels',
     'corsheaders',
@@ -115,8 +117,7 @@ CHANNEL_LAYERS = {
     'redis': {
         'BACKEND': 'library.channelsredis.pubsub.RedisPubSubChannelLayer',
         'CONFIG': {
-            'hosts': ['redis://{user}:{password}@127.0.0.1:6379'.format(user=PROJECT['NAME'].lower(),
-                                                                        password=PROJECT['NAME'].lower())],
+            'hosts': ['redis://{user}:{password}@127.0.0.1:6379'.format(user='erpro',password='erpro')],
             'symmetric_encryption_keys': [SECRET_KEY],
         },
     },
