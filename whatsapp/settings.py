@@ -10,9 +10,15 @@ DEFAULTS = dict(
     SECRET_KEY=str(getattr(djangosettings, 'SECRET_KEY', '')),
     SCHEMA=ApplicationConfig.name,
     WEBHOOK_URL=getattr(djangosettings, 'WHATSAPP.WEBHOOK_URL', ''),
-    PORT = getattr(djangosettings, 'PORT', ''),
+    PORT = getattr(djangosettings, 'WHATSAPP.PORT', ''),
     SESSION=None,
     CONFIG=None,
+    OUTBOX=dict(
+        RETRY=3,
+        DELAY=5,
+        RETRY_BLAST=True,
+        BATCH_SIZE=50,
+    ),
 )
 __all__ = list(DEFAULTS)
 

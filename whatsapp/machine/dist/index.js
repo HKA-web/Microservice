@@ -6,56 +6,54 @@ import swaggerUi from 'swagger-ui-express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import os from 'os';
-import { handleConnect, handleQRPage, handleQRView } from './controllers/app.js';
-import { connectToWhatsApp } from './whatsapp.js';
+import { initSessionsFromDisk } from './whatsapp.js';
 import route from './apis/routes.js';
 
 const app = express();
 const upload = multer();
-const sessionRoot = path.resolve('./src/sessions');
 
 // CORS supaya bisa diakses IP luar
-app.use(cors({ origin: '*', methods: ['GET','POST','PUT','DELETE'], allowedHeaders: ['Content-Type','Authorization'] }));
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], allowedHeaders: ['Content-Type', 'Authorization'] }));
 
-// Swagger
+// Endpoint raw openapi.json (selalu membaca file terbaru dari disk tanpa cache)
 const swaggerFilePath = path.join(process.cwd(), 'openapi.json');
-if (fs.existsSync(swaggerFilePath)) {
-  const swaggerDocument = JSON.parse(fs.readFileSync(swaggerFilePath, 'utf-8'));
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-}
+app.get('/openapi.json', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  if (fs.existsSync(swaggerFilePath)) {
+    res.sendFile(swaggerFilePath);
+  } else {
+    res.status(404).json({ error: 'openapi.json tidak ditemukan' });
+  }
+});
+
+// Swagger Docs (Mengambil spec dinamis dari /openapi.json)
+app.use(
+  '/docs',
+  (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+  },
+  swaggerUi.serve,
+  swaggerUi.setup(null, { swaggerUrl: '/openapi.json' })
+);
 
 // Middleware
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(upload.none());
 
-// Root redirect
+// Root redirect ke Swagger Docs
 app.get('/', (req, res) => res.redirect('/docs'));
 
-// WA endpoints
-app.get('/wa/connect', handleConnect);
-app.get('/wa/qr/page', handleQRPage);
-app.get('/wa/qr/view', handleQRView);
-
+// Single Source of Truth API Routes
 app.use('/api', route);
 
-// Auto reconnect
-async function reconnectFromDisk() {
-  if (!fs.existsSync(sessionRoot)) return;
-
-  const dirs = fs.readdirSync(sessionRoot);
-  for (const dir of dirs) {
-    const phone = dir;
-    console.log(`Reconnect WhatsApp untuk ${phone}...`);
-    try {
-      await connectToWhatsApp(phone);
-      await new Promise(res => setTimeout(res, 1000));
-    } catch (err) {
-      console.error(`Gagal reconnect untuk ${phone}:`, err.message);
-    }
-  }
-}
-reconnectFromDisk();
+// Auto reconnect sesi yang tersimpan di disk
+initSessionsFromDisk();
 
 function getLocalIP() {
   const nets = os.networkInterfaces();
@@ -67,12 +65,21 @@ function getLocalIP() {
   return '0.0.0.0';
 }
 
-const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
-app.listen(PORT, HOST, () => {
-  console.log(`Server running at:`);
-  console.log(`Local:   http://localhost:${PORT}`);
-  console.log(`Network: http://${getLocalIP()}:${PORT}`);
-  console.log(process.env.config_webhook_autoRejectCall);
-});
+const portArg = process.argv.find(arg => arg.startsWith('--port='));
+const webhookArg = process.argv.find(arg => arg.startsWith('--webhook.url='));
+if (webhookArg && !process.env.WEBHOOK_URL) {
+  process.env.WEBHOOK_URL = webhookArg.split('=')[1];
+}
 
+const PORT = process.env.PORT || (portArg ? portArg.split('=')[1] : null) || 3002;
+const HOST = '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 WAHA Microservice berjalan di port: ${PORT}`);
+  console.log(`Local:        http://localhost:${PORT}`);
+  console.log(`Network:      http://${getLocalIP()}:${PORT}`);
+  console.log(`Swagger Docs: http://localhost:${PORT}/docs`);
+  if (process.env.WEBHOOK_URL) {
+    console.log(`Webhook URL:  ${process.env.WEBHOOK_URL}`);
+  }
+});

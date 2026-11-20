@@ -16,6 +16,8 @@ bin/nginx/nginx.pid
 empty.zip
 
 # ignore module here
+whatsapp/machine/**/sessions/
+whatsapp/machine/**/session/
 
 # force include here
 !bin/nodejs/node_modules/
@@ -23,3 +25,4 @@ empty.zip
 !static/application/media/
 !static/vendor/**/media/
 !core/templates/core/screensaver/data/
+

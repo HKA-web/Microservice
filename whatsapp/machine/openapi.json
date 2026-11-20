@@ -1,10 +1,20 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "WA BOT",
-    "version": "1.0.2",
-    "description": "API untuk mengelola WhatsApp Bot."
+    "title": "WAHA Microservice API",
+    "version": "2.0.0",
+    "description": "API WhatsApp Microservice standar WAHA (WhatsApp HTTP API) dengan multi-session engine Baileys."
   },
+  "tags": [
+    {
+      "name": "WAHA - Chatting",
+      "description": "Endpoint pengiriman pesan teks, gambar, dan dokumen"
+    },
+    {
+      "name": "WAHA - Sessions",
+      "description": "Endpoint manajemen sesi, status, dan QR Code WhatsApp"
+    }
+  ],
   "components": {
     "securitySchemes": {
       "bearerAuth": {
@@ -16,36 +26,67 @@
     "parameters": {}
   },
   "paths": {
-    "/wa/connect": {
-      "get": {
+    "/api/sendText": {
+      "post": {
         "tags": [
-          "Pairing Device"
+          "WAHA - Chatting"
         ],
-        "summary": "Inisialisasi koneksi WhatsApp (pairing mode)",
-        "description": "Memulai sesi WhatsApp baru berdasarkan nomor HP. Hasilnya berisi pesan JSON dan URL menuju halaman QR code untuk proses pairing.",
-        "parameters": [
-          {
-            "name": "phone",
-            "in": "query",
-            "description": "Nomor WhatsApp lengkap (diawali 62, tanpa +)",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "6281xxxxx"
+        "summary": "Kirim pesan teks (Standar WAHA)",
+        "description": "Mengirim pesan teks ke satu atau beberapa nomor sekaligus. Nomor otomatis dinormalisasi (08xx / 62xx / @g.us).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "chatId",
+                  "text"
+                ],
+                "properties": {
+                  "session": {
+                    "type": "string",
+                    "description": "Nama / nomor sesi (opsional jika hanya ada 1 sesi aktif)",
+                    "example": "628xxxxxxxxx"
+                  },
+                  "chatId": {
+                    "type": "string",
+                    "description": "Nomor tujuan (string atau koma pemisah untuk banyak nomor, e.g. 628xxxxxxxxx, 6285678901234)",
+                    "example": "628xxxxxxxxx"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Isi teks pesan",
+                    "example": "Halo, ini pesan konfirmasi dari sistem."
+                  }
+                }
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
-            "description": "Berhasil membuat atau melanjutkan sesi WhatsApp",
+            "description": "Pesan berhasil terkirim",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "id": {
                       "type": "string",
-                      "example": "http://localhost:3000/wa/qr/page?phone=6285xxxx"
+                      "example": "3EB0ABC123456789"
+                    },
+                    "to": {
+                      "type": "string",
+                      "example": "628xxxxxxxxx@s.whatsapp.net"
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "example": 1716382910
                     }
                   }
                 }
@@ -53,46 +94,372 @@
             }
           },
           "400": {
-            "description": "Nomor tidak valid atau parameter hilang"
+            "description": "Parameter tidak valid atau sesi belum aktif"
           },
           "500": {
-            "description": "Gagal memulai koneksi WhatsApp"
+            "description": "Gagal mengirim pesan"
           }
         }
       }
     },
-    "/wa/qr/view": {
+    "/api/sendImage": {
+      "post": {
+        "tags": [
+          "WAHA - Chatting"
+        ],
+        "summary": "Kirim gambar (Standar WAHA)",
+        "description": "Mengirim file gambar melalui URL atau Base64.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "chatId",
+                  "file"
+                ],
+                "properties": {
+                  "session": {
+                    "type": "string",
+                    "description": "Nama / nomor sesi",
+                    "example": "628xxxxxxxxx"
+                  },
+                  "chatId": {
+                    "type": "string",
+                    "description": "Nomor tujuan",
+                    "example": "628xxxxxxxxx"
+                  },
+                  "file": {
+                    "type": "object",
+                    "required": [
+                      "url"
+                    ],
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "description": "URL gambar (http/https) atau format data:image base64",
+                        "example": "https://images.unsplash.com/photo-1579202673506-ca3ce28943ef"
+                      }
+                    }
+                  },
+                  "caption": {
+                    "type": "string",
+                    "description": "Keterangan gambar (opsional)",
+                    "example": "Foto dokumentasi"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Gambar berhasil dikirim"
+          },
+          "400": {
+            "description": "Parameter tidak valid"
+          },
+          "500": {
+            "description": "Gagal mengirim gambar"
+          }
+        }
+      }
+    },
+    "/api/sendFile": {
+      "post": {
+        "tags": [
+          "WAHA - Chatting"
+        ],
+        "summary": "Kirim dokumen / file (Standar WAHA)",
+        "description": "Mengirim dokumen (PDF, Docx, Zip, dll) via URL.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "chatId",
+                  "file"
+                ],
+                "properties": {
+                  "session": {
+                    "type": "string",
+                    "description": "Nama / nomor sesi",
+                    "example": "628xxxxxxxxx"
+                  },
+                  "chatId": {
+                    "type": "string",
+                    "description": "Nomor tujuan",
+                    "example": "628xxxxxxxxx"
+                  },
+                  "file": {
+                    "type": "object",
+                    "required": [
+                      "url"
+                    ],
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "description": "URL dokumen",
+                        "example": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+                      },
+                      "filename": {
+                        "type": "string",
+                        "description": "Nama file yang tampil di WhatsApp",
+                        "example": "Dokumen_Penting.pdf"
+                      },
+                      "mimetype": {
+                        "type": "string",
+                        "description": "MIME type file (opsional)",
+                        "example": "application/pdf"
+                      }
+                    }
+                  },
+                  "caption": {
+                    "type": "string",
+                    "description": "Keterangan dokumen (opsional)",
+                    "example": "Lampiran laporan"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dokumen berhasil dikirim"
+          },
+          "400": {
+            "description": "Parameter tidak valid"
+          },
+          "500": {
+            "description": "Gagal mengirim dokumen"
+          }
+        }
+      }
+    },
+    "/api/sessions": {
       "get": {
         "tags": [
-          "Pairing Device"
+          "WAHA - Sessions"
         ],
-        "summary": "Ambil gambar QR WhatsApp",
-        "description": "Mengembalikan gambar QR code dalam format PNG (berubah setiap beberapa detik).",
+        "summary": "Daftar semua sesi WhatsApp",
+        "description": "Mengembalikan daftar seluruh sesi beserta status (STARTING, SCAN_QR_CODE, WORKING, FAILED, STOPPED).",
+        "responses": {
+          "200": {
+            "description": "Daftar sesi berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "example": "628xxxxxxxxx"
+                      },
+                      "status": {
+                        "type": "string",
+                        "example": "WORKING"
+                      },
+                      "me": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "628xxxxxxxxx:1@s.whatsapp.net"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Akun Bisnis"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/start": {
+      "post": {
+        "tags": [
+          "WAHA - Sessions"
+        ],
+        "summary": "Mulai / sambungkan sesi WhatsApp",
+        "description": "Menginisialisasi sesi baru atau memuat kembali sesi yang tersimpan di disk.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nomor atau nama unik sesi",
+                    "example": "628xxxxxxxxx"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inisialisasi sesi berhasil dimulai"
+          },
+          "400": {
+            "description": "Parameter name wajib diisi"
+          }
+        }
+      }
+    },
+    "/api/sessions/stop": {
+      "post": {
+        "tags": [
+          "WAHA - Sessions"
+        ],
+        "summary": "Hentikan sesi WhatsApp",
+        "description": "Memutus sambungan soket WhatsApp tanpa menghapus sesi login di disk.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nomor atau nama unik sesi",
+                    "example": "628xxxxxxxxx"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sesi berhasil dihentikan"
+          },
+          "400": {
+            "description": "Parameter name wajib diisi"
+          }
+        }
+      }
+    },
+    "/api/sessions/logout": {
+      "post": {
+        "tags": [
+          "WAHA - Sessions"
+        ],
+        "summary": "Logout sesi WhatsApp",
+        "description": "Keluar resmi dari WhatsApp dan menghapus folder kredensial sesi dari disk.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nomor atau nama unik sesi yang ingin di-logout",
+                    "example": "628xxxxxxxxx"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sesi berhasil di-logout"
+          },
+          "400": {
+            "description": "Parameter name wajib diisi"
+          }
+        }
+      }
+    },
+    "/api/{session}/auth/qr": {
+      "get": {
+        "tags": [
+          "WAHA - Sessions"
+        ],
+        "summary": "Ambil QR Code sesi untuk pairing",
+        "description": "Mengembalikan QR code dalam format gambar PNG secara langsung (bisa di-render di browser/img tag) atau format JSON jika parameter format=json.",
         "parameters": [
           {
-            "name": "phone",
-            "in": "query",
+            "name": "session",
+            "in": "path",
             "required": true,
+            "description": "Nomor atau nama sesi",
             "schema": {
               "type": "string",
-              "example": "628123xxxxx"
+              "example": "628xxxxxxxxx"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "description": "Format keluaran (default: png)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "png",
+                "json"
+              ],
+              "default": "png"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Gambar QR dikembalikan",
+            "description": "Gambar QR Code PNG atau data JSON",
             "content": {
               "image/png": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
                 }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "SCAN_QR_CODE"
+                    },
+                    "qr": {
+                      "type": "string",
+                      "example": "2@vY5..."
+                    }
+                  }
+                }
               }
             }
           },
           "202": {
-            "description": "QR belum tersedia atau sudah kadaluarsa"
+            "description": "QR Code sedang dimuat / belum siap"
           },
           "404": {
             "description": "Sesi belum dibuat"
@@ -100,1013 +467,74 @@
         }
       }
     },
-    "/wa/session": {
+    "/api/sessions/{session}/auth/qr": {
       "get": {
         "tags": [
-          "Session Management"
+          "WAHA - Sessions"
         ],
-        "summary": "Ambil daftar session WhatsApp",
-        "description": "Mengembalikan daftar folder session WhatsApp yang tersedia di server.",
-        "responses": {
-          "200": {
-            "description": "Berhasil mengambil daftar session",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "session": {
-                            "type": "string",
-                            "example": "6281xxxxx"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+        "summary": "Ambil QR Code Sesi (Format /api/sessions/{session}/auth/qr)",
+        "description": "Mengembalikan QR code dalam format gambar PNG secara langsung (bisa di-render di browser/img tag) atau format JSON jika parameter format=json.",
+        "parameters": [
+          {
+            "name": "session",
+            "in": "path",
+            "required": true,
+            "description": "Nomor atau nama sesi",
+            "schema": {
+              "type": "string",
+              "example": "628xxxxxxxxx"
             }
           },
-          "500": {
-            "description": "Gagal membaca directory session"
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "description": "Format keluaran (default: png)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "png",
+                "json"
+              ],
+              "default": "png"
+            }
           }
-        }
-      }
-    },
-    "/api/send-audio": {
-      "post": {
-        "summary": "Kirim audio WhatsApp (single atau multi)",
-        "tags": [
-          "WhatsApp"
         ],
-        "description": "Gunakan `_botDevice` untuk memilih device tertentu. Jika tidak diberikan, session pertama akan dipakai. Gunakan `ptt: true` untuk mengirim sebagai voice note.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "jid": {
-                        "type": "string",
-                        "description": "Nomor WhatsApp tujuan"
-                      },
-                      "audioUrl": {
-                        "type": "string",
-                        "description": "URL audio (mp3 / ogg)"
-                      },
-                      "ptt": {
-                        "type": "boolean",
-                        "description": "Jika true akan dikirim sebagai voice note",
-                        "default": false
-                      }
-                    },
-                    "required": [
-                      "jid",
-                      "audioUrl"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "messages": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "jid": {
-                              "type": "string",
-                              "description": "Nomor WhatsApp tujuan"
-                            },
-                            "audioUrl": {
-                              "type": "string",
-                              "description": "URL audio (mp3 / ogg)"
-                            },
-                            "ptt": {
-                              "type": "boolean",
-                              "description": "Jika true akan dikirim sebagai voice note",
-                              "default": false
-                            }
-                          },
-                          "required": [
-                            "jid",
-                            "audioUrl"
-                          ]
-                        }
-                      }
-                    },
-                    "required": [
-                      "messages"
-                    ]
-                  }
-                ]
+        "responses": {
+          "200": {
+            "description": "Gambar QR Code PNG atau data JSON",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               },
-              "examples": {
-                "singleAudio": {
-                  "summary": "Kirim satu audio",
-                  "value": {
-                    "_botDevice": "628xxxxxx",
-                    "jid": "62856xxxxxx@s.whatsapp.net",
-                    "audioUrl": "https://example.com/audio.mp3",
-                    "ptt": false
-                  }
-                },
-                "voiceNote": {
-                  "summary": "Kirim sebagai voice note",
-                  "value": {
-                    "jid": "62856xxxxxx@s.whatsapp.net",
-                    "audioUrl": "https://example.com/voice.ogg",
-                    "ptt": true
-                  }
-                },
-                "multiAudio": {
-                  "summary": "Kirim banyak audio sekaligus",
-                  "value": {
-                    "_botDevice": "6285183xxxxxxx",
-                    "messages": [
-                      {
-                        "jid": "628564xxxxx@s.whatsapp.net",
-                        "audioUrl": "https://example.com/a1.mp3",
-                        "ptt": false
-                      },
-                      {
-                        "jid": "628121xxxxx@s.whatsapp.net",
-                        "audioUrl": "https://example.com/a2.ogg",
-                        "ptt": true
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Hasil pengiriman audio per nomor",
-            "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "jid": {
-                            "type": "string"
-                          },
-                          "error": {
-                            "type": "string",
-                            "nullable": true
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "examples": {
-                  "successAll": {
-                    "summary": "Semua audio berhasil dikirim",
-                    "value": {
-                      "data": [
-                        {
-                          "jid": "628564xxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "628121xxxxx@s.whatsapp.net",
-                          "error": null
-                        }
-                      ]
-                    }
-                  },
-                  "partialError": {
-                    "summary": "Beberapa audio gagal",
-                    "value": {
-                      "data": [
-                        {
-                          "jid": "628564xxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "628121xxxxx@s.whatsapp.net",
-                          "error": "Socket WA belum siap"
-                        }
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Device tidak ditemukan atau field wajib tidak ada",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Device tidak ditemukan"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Tidak ada device WA aktif atau socket belum siap",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Tidak ada device WA aktif"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/send-document": {
-      "post": {
-        "summary": "Kirim dokumen WhatsApp (single atau multi)",
-        "tags": [
-          "WhatsApp"
-        ],
-        "description": "Gunakan `_botDevice` untuk memilih device tertentu. Jika tidak diberikan, session pertama akan dipakai. Support URL dan Base64.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "jid": {
-                        "type": "string",
-                        "description": "Nomor WhatsApp tujuan"
-                      },
-                      "documentUrl": {
-                        "type": "string",
-                        "description": "URL file atau Base64 (data:application/...)"
-                      },
-                      "fileName": {
-                        "type": "string",
-                        "description": "Nama file yang tampil di WhatsApp"
-                      },
-                      "caption": {
-                        "type": "string",
-                        "description": "Caption dokumen (optional)"
-                      }
+                    "status": {
+                      "type": "string",
+                      "example": "SCAN_QR_CODE"
                     },
-                    "required": [
-                      "jid",
-                      "documentUrl"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "messages": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "jid": {
-                              "type": "string",
-                              "description": "Nomor WhatsApp tujuan"
-                            },
-                            "documentUrl": {
-                              "type": "string",
-                              "description": "URL file atau Base64"
-                            },
-                            "fileName": {
-                              "type": "string",
-                              "description": "Nama file yang tampil"
-                            },
-                            "caption": {
-                              "type": "string",
-                              "description": "Caption dokumen (optional)"
-                            }
-                          },
-                          "required": [
-                            "jid",
-                            "documentUrl"
-                          ]
-                        }
-                      }
-                    },
-                    "required": [
-                      "messages"
-                    ]
-                  }
-                ]
-              },
-              "examples": {
-                "singleUrlDocument": {
-                  "summary": "Kirim satu dokumen via URL",
-                  "value": {
-                    "_botDevice": "6285183xxxxxxx",
-                    "jid": "62856xxxxx@s.whatsapp.net",
-                    "documentUrl": "https://example.com/invoice.pdf",
-                    "fileName": "invoice-feb-2026.pdf",
-                    "caption": "Invoice bulan Februari"
-                  }
-                },
-                "singleBase64Document": {
-                  "summary": "Kirim dokumen via Base64",
-                  "value": {
-                    "jid": "62856xxxxx@s.whatsapp.net",
-                    "documentUrl": "data:application/pdf;base64,JVBERi0xLjQKJ...",
-                    "fileName": "laporan.pdf"
-                  }
-                },
-                "multiDocument": {
-                  "summary": "Kirim banyak dokumen sekaligus",
-                  "value": {
-                    "_botDevice": "6285183xxxxxxx",
-                    "messages": [
-                      {
-                        "jid": "628564xxxxx@s.whatsapp.net",
-                        "documentUrl": "https://example.com/report.xlsx",
-                        "fileName": "report.xlsx"
-                      },
-                      {
-                        "jid": "628121xxxxx@s.whatsapp.net",
-                        "documentUrl": "https://example.com/manual.docx",
-                        "fileName": "manual.docx",
-                        "caption": "Panduan terbaru"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Hasil pengiriman dokumen per nomor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "jid": {
-                            "type": "string"
-                          },
-                          "error": {
-                            "type": "string",
-                            "nullable": true
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "examples": {
-                  "successAll": {
-                    "summary": "Semua dokumen berhasil",
-                    "value": {
-                      "data": [
-                        {
-                          "jid": "628564xxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "628121xxxxx@s.whatsapp.net",
-                          "error": null
-                        }
-                      ]
-                    }
-                  },
-                  "partialError": {
-                    "summary": "Sebagian gagal",
-                    "value": {
-                      "data": [
-                        {
-                          "jid": "628564xxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "628121xxxxx@s.whatsapp.net",
-                          "error": "Socket WA belum siap"
-                        }
-                      ]
+                    "qr": {
+                      "type": "string",
+                      "example": "2@vY5..."
                     }
                   }
                 }
               }
             }
           },
-          "400": {
-            "description": "Device tidak ditemukan atau field wajib tidak ada",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Device tidak ditemukan"
-                }
-              }
-            }
+          "202": {
+            "description": "QR Code sedang dimuat / belum siap"
           },
-          "500": {
-            "description": "Tidak ada device WA aktif atau socket belum siap",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Tidak ada device WA aktif"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/send-image": {
-      "post": {
-        "summary": "Kirim gambar WhatsApp (single atau multi)",
-        "tags": [
-          "WhatsApp"
-        ],
-        "description": "Gunakan `_botDevice` untuk memilih device tertentu. Jika tidak diberikan, session pertama akan dipakai.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "jid": {
-                        "type": "string",
-                        "description": "Nomor WhatsApp tujuan (format: 628xxx@s.whatsapp.net)"
-                      },
-                      "imageUrl": {
-                        "type": "string",
-                        "description": "URL gambar (https://...)"
-                      },
-                      "caption": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "fileName": {
-                        "type": "string",
-                        "nullable": true
-                      }
-                    },
-                    "required": [
-                      "jid",
-                      "imageUrl"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string"
-                      },
-                      "images": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "jid": {
-                              "type": "string"
-                            },
-                            "imageUrl": {
-                              "type": "string"
-                            },
-                            "caption": {
-                              "type": "string",
-                              "nullable": true
-                            },
-                            "fileName": {
-                              "type": "string",
-                              "nullable": true
-                            }
-                          },
-                          "required": [
-                            "jid",
-                            "imageUrl"
-                          ]
-                        }
-                      }
-                    },
-                    "required": [
-                      "images"
-                    ]
-                  }
-                ]
-              },
-              "examples": {
-                "singleImage": {
-                  "summary": "Kirim satu gambar",
-                  "value": {
-                    "_botDevice": "6285183xxxxxxx",
-                    "jid": "628564xxxxx@s.whatsapp.net",
-                    "imageUrl": "https://example.com/image.jpg",
-                    "caption": "Ini gambar dari bot 🖼️",
-                    "fileName": "promo.jpg"
-                  }
-                },
-                "multiImage": {
-                  "summary": "Kirim banyak gambar sekaligus",
-                  "value": {
-                    "_botDevice": "6285183xxxxxxx",
-                    "images": [
-                      {
-                        "jid": "628564xxxxx@s.whatsapp.net",
-                        "imageUrl": "https://example.com/img1.jpg",
-                        "caption": "Gambar pertama"
-                      },
-                      {
-                        "jid": "628121xxxxxx@s.whatsapp.net",
-                        "imageUrl": "https://example.com/img2.jpg",
-                        "caption": "Gambar kedua"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Hasil pengiriman gambar per nomor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "jid": {
-                            "type": "string"
-                          },
-                          "error": {
-                            "type": "string",
-                            "nullable": true
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Device tidak ditemukan atau field wajib tidak ada",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Device tidak ditemukan"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Tidak ada device WA aktif atau socket belum siap",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Tidak ada device WA aktif"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/send-message": {
-      "post": {
-        "summary": "Kirim pesan WhatsApp (single atau multi)",
-        "tags": [
-          "WhatsApp"
-        ],
-        "description": "Gunakan `_botDevice` untuk memilih device tertentu. Jika tidak diberikan, session pertama akan dipakai.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "jid": {
-                        "type": "string",
-                        "description": "Nomor WhatsApp tujuan"
-                      },
-                      "message": {
-                        "type": "string",
-                        "description": "Isi pesan"
-                      }
-                    },
-                    "required": [
-                      "jid",
-                      "message"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "messages": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "jid": {
-                              "type": "string",
-                              "description": "Nomor WhatsApp tujuan"
-                            },
-                            "message": {
-                              "type": "string",
-                              "description": "Isi pesan"
-                            }
-                          },
-                          "required": [
-                            "jid",
-                            "message"
-                          ]
-                        }
-                      }
-                    },
-                    "required": [
-                      "messages"
-                    ]
-                  }
-                ]
-              },
-              "examples": {
-                "singleMessage": {
-                  "summary": "Kirim satu pesan",
-                  "value": {
-                    "_botDevice": "628xxxxxx",
-                    "jid": "62856xxxxxx@s.whatsapp.net",
-                    "message": "Halo, ini pesan dari bot!"
-                  }
-                },
-                "multiMessage": {
-                  "summary": "Kirim banyak pesan sekaligus",
-                  "value": {
-                    "_botDevice": "6285183xxxxxxxxx",
-                    "messages": [
-                      {
-                        "jid": "628564xxxxx@s.whatsapp.net",
-                        "message": "Halo, admin, pesan dikirim melalui wa bot!"
-                      },
-                      {
-                        "jid": "628121xxxxxx@s.whatsapp.net",
-                        "message": "Halo, yoga, pesan dikirim melalui wa bot!"
-                      },
-                      {
-                        "jid": "6281xxxxxxx@s.whatsapp.net",
-                        "message": "Halo, tuan muda, pesan dikirim melalui wa bot!"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Hasil pengiriman pesan per nomor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "jid": {
-                            "type": "string"
-                          },
-                          "error": {
-                            "type": "string",
-                            "nullable": true
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "examples": {
-                  "successAll": {
-                    "summary": "Semua pesan berhasil",
-                    "value": {
-                      "data": [
-                        {
-                          "jid": "628564xxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "628121xxxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "6281xxxx@s.whatsapp.net",
-                          "error": null
-                        }
-                      ]
-                    }
-                  },
-                  "partialError": {
-                    "summary": "Beberapa pesan gagal",
-                    "value": {
-                      "data": [
-                        {
-                          "jid": "628564xxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "628121xxxxxx@s.whatsapp.net",
-                          "error": "Socket WA belum siap"
-                        },
-                        {
-                          "jid": "6281xxxx@s.whatsapp.net",
-                          "error": null
-                        }
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Device tidak ditemukan atau field wajib tidak ada",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Device tidak ditemukan"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Tidak ada device WA aktif atau socket belum siap",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Tidak ada device WA aktif"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/send-video": {
-      "post": {
-        "summary": "Kirim video WhatsApp (single atau multi)",
-        "tags": [
-          "WhatsApp"
-        ],
-        "description": "Gunakan `_botDevice` untuk memilih device tertentu. Jika tidak diberikan, session pertama akan dipakai.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "jid": {
-                        "type": "string",
-                        "description": "Nomor WhatsApp tujuan (format: 628xxx@s.whatsapp.net)"
-                      },
-                      "videoUrl": {
-                        "type": "string",
-                        "description": "URL video (https://...)"
-                      },
-                      "caption": {
-                        "type": "string",
-                        "description": "Caption video",
-                        "nullable": true
-                      },
-                      "fileName": {
-                        "type": "string",
-                        "description": "Nama file video (opsional)",
-                        "nullable": true
-                      }
-                    },
-                    "required": [
-                      "jid",
-                      "videoUrl"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "_botDevice": {
-                        "type": "string",
-                        "description": "Device ID / nomor WA"
-                      },
-                      "videos": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "jid": {
-                              "type": "string",
-                              "description": "Nomor WhatsApp tujuan"
-                            },
-                            "videoUrl": {
-                              "type": "string",
-                              "description": "URL video (https://...)"
-                            },
-                            "caption": {
-                              "type": "string",
-                              "nullable": true
-                            },
-                            "fileName": {
-                              "type": "string",
-                              "nullable": true
-                            }
-                          },
-                          "required": [
-                            "jid",
-                            "videoUrl"
-                          ]
-                        }
-                      }
-                    },
-                    "required": [
-                      "videos"
-                    ]
-                  }
-                ]
-              },
-              "examples": {
-                "singleVideo": {
-                  "summary": "Kirim satu video",
-                  "value": {
-                    "_botDevice": "6285183xxxxxxx",
-                    "jid": "628564xxxxx@s.whatsapp.net",
-                    "videoUrl": "https://example.com/video.mp4",
-                    "caption": "Ini video dari bot 🎬",
-                    "fileName": "promo.mp4"
-                  }
-                },
-                "multiVideo": {
-                  "summary": "Kirim banyak video sekaligus",
-                  "value": {
-                    "_botDevice": "6285183xxxxxxx",
-                    "videos": [
-                      {
-                        "jid": "628564xxxxx@s.whatsapp.net",
-                        "videoUrl": "https://example.com/video1.mp4",
-                        "caption": "Video pertama"
-                      },
-                      {
-                        "jid": "628121xxxxxx@s.whatsapp.net",
-                        "videoUrl": "https://example.com/video2.mp4",
-                        "caption": "Video kedua"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Hasil pengiriman video per nomor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "jid": {
-                            "type": "string"
-                          },
-                          "error": {
-                            "type": "string",
-                            "nullable": true
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "examples": {
-                  "successAll": {
-                    "summary": "Semua video berhasil",
-                    "value": {
-                      "data": [
-                        {
-                          "jid": "628564xxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "628121xxxxxx@s.whatsapp.net",
-                          "error": null
-                        }
-                      ]
-                    }
-                  },
-                  "partialError": {
-                    "summary": "Beberapa video gagal",
-                    "value": {
-                      "data": [
-                        {
-                          "jid": "628564xxxxx@s.whatsapp.net",
-                          "error": null
-                        },
-                        {
-                          "jid": "628121xxxxxx@s.whatsapp.net",
-                          "error": "Socket WA belum siap"
-                        }
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Device tidak ditemukan atau field wajib tidak ada",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Device tidak ditemukan"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Tidak ada device WA aktif atau socket belum siap",
-            "content": {
-              "application/json": {
-                "example": {
-                  "error": "Tidak ada device WA aktif"
-                }
-              }
-            }
+          "404": {
+            "description": "Sesi belum dibuat"
           }
         }
       }
     }
-  },
-  "tags": []
+  }
 }

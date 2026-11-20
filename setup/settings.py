@@ -51,6 +51,8 @@ INSTALLED_LIBRARY = [
     'rest_framework',
     'channels',
     'corsheaders',
+    'hueymonitorutils',
+    'hueymonitor',
 ]
 INSTALLED_MODULE = []
 INSTALLED_APPS = INSTALLED_LIBRARY + INSTALLED_MODULE
@@ -142,8 +144,10 @@ CACHES = {
     },
     'redis': {
         'BACKEND': 'library.djangoredis.cache.RedisCache',
-        'LOCATION': 'redis://{user}:{password}@127.0.0.1:6379'.format(user=PROJECT['NAME'].lower(),
-                                                                      password=PROJECT['NAME'].lower()),
+        'LOCATION': 'redis://{user}:{password}@127.0.0.1:6379'.format(
+            user=PROJECT['NAME'].lower(),
+            password=PROJECT['NAME'].lower()
+        ),
         'OPTIONS': {
             'CLIENT_CLASS': 'library.djangoredis.client.DefaultClient',
             'IGNORE_EXCEPTIONS': False,
@@ -389,7 +393,7 @@ if any(item in [
 
 for application in list(filter(lambda applications: os.path.isdir(applications) and os.path.exists(
         os.path.join(applications, 'apps.py')) and not os.path.exists(os.path.join(applications, '.disabled')),
-                               os.listdir(settings.BASE_DIR), )):
+        os.listdir(settings.BASE_DIR), )):
     def register(application):
         import logging
         logger = logging.getLogger(__name__)
@@ -411,3 +415,17 @@ for application in list(filter(lambda applications: os.path.isdir(applications) 
 
     register(application)
 setattr(settings, 'INSTALLED_APPS', settings.INSTALLED_LIBRARY + settings.INSTALLED_MODULE)
+
+from core.utils.dict import mergedict
+
+for module in settings.INSTALLED_MODULE:
+    if os.path.exists(os.path.join(settings.BASE_DIR, module, 'tasks')) and len([task for task in os.listdir(os.path.join(settings.BASE_DIR, module, 'tasks')) if task.endswith('.py') and task not in ('__init__.py',)]) > 0:
+        settings.HUEYS['queues'].update({module: dict(mergedict({
+            **settings.HUEYS['queues'][settings.HUEYS['default']],
+            **{'name': module, },
+        }, settings.HUEYS['queues'].get(module, {}), )), })
+    os.makedirs(os.path.join(settings.BASE_DIR, module, 'fixtures'), exist_ok=True, )
+    os.makedirs(os.path.join(settings.BASE_DIR, module, 'locale'), exist_ok=True, )
+
+for key, queue in settings.HUEYS['queues'].items():
+    queue.update(url=settings.CACHES['redis']['LOCATION'])

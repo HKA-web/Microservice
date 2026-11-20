@@ -23,7 +23,5 @@ class ApplicationConfig(AppConfig):
             # search.register(model)
             pass
         pass
-        # from checks import signals
-        __all__ = [
-            # signals,
-        ]
+        import whatsapp.signals
+
