@@ -51,8 +51,9 @@ INSTALLED_LIBRARY = [
     'rest_framework',
     'channels',
     'corsheaders',
-    'hueymonitorutils',
-    'hueymonitor',
+    'library.hueymonitorutils',
+    'library.hueymonitor',
+    'library.cacheops',
 ]
 INSTALLED_MODULE = []
 INSTALLED_APPS = INSTALLED_LIBRARY + INSTALLED_MODULE
