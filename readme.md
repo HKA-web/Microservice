@@ -33,19 +33,7 @@ Jalankan migrasi database utama jika diperlukan:
 python manage.py migrate
 ```
 
-### 3. Setup Database WhatsApp (DDL PostgreSQL)
-Karena tabel modul WhatsApp menggunakan konfigurasi unmanaged (`managed = False`), tabel-tabel ini tidak dibuat otomatis oleh `python manage.py migrate`. Eksekusi query DDL pada database yang ditunjuk oleh `DATABASES.WHATSAPP`.
-
-File query DDL dapat diakses di [whatsapp/schema.sql](whatsapp/schema.sql) dan data awal / contoh di [whatsapp/dummy_data.sql](whatsapp/dummy_data.sql):
-```bash
-# 1. Eksekusi query pembuatan schema & tabel
-psql -h <host> -U <user> -d <db_name> -f whatsapp/schema.sql
-
-# 2. (Opsional) Masukkan data awal / contoh command & session
-psql -h <host> -U <user> -d <db_name> -f whatsapp/dummy_data.sql
-```
-
-### 4. Setup WhatsApp Machine (Node.js)
+### 3. Setup WhatsApp Machine (Node.js)
 Masuk ke direktori engine WhatsApp dan install paket dependencies:
 ```bash
 cd whatsapp/machine
@@ -292,6 +280,34 @@ CREATE TABLE IF NOT EXISTS "whatsapp"."sent" (
 );
 
 -- -----------------------------------------------------------------------------
+-- 8. Table: datasource (Schema Core - Koneksi Database Dinamis)
+-- -----------------------------------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS "core";
+CREATE SCHEMA IF NOT EXISTS "history";
+
+CREATE TABLE IF NOT EXISTS "core"."datasource" (
+    "created" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "modified" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "is_removed" BOOLEAN NOT NULL DEFAULT FALSE,
+    "read_only" BOOLEAN NOT NULL DEFAULT FALSE,
+    "enable" BOOLEAN NOT NULL DEFAULT TRUE,
+    "properties" JSONB NOT NULL DEFAULT '{}'::jsonb,
+    "description" TEXT NULL,
+    "datasource_id" VARCHAR(25) NOT NULL,
+    "datasource_name" VARCHAR(255) NOT NULL,
+    "engine" VARCHAR(255) NULL,
+    "database" VARCHAR(255) NOT NULL,
+    "user" VARCHAR(255) NULL,
+    "password" BYTEA NULL,
+    "host" VARCHAR(255) NULL,
+    "port" INTEGER NULL,
+    "url" TEXT NULL,
+    "status" VARCHAR(100) NOT NULL DEFAULT 'draft',
+    CONSTRAINT "datasource_pkey" PRIMARY KEY ("datasource_id"),
+    CONSTRAINT "datasource_datasource_name_uniq" UNIQUE ("datasource_name")
+);
+
+-- -----------------------------------------------------------------------------
 -- Indexes
 -- -----------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS "inbox_session_id_dac84edb" ON "whatsapp"."inbox" ("session_id");
@@ -409,4 +425,82 @@ INSERT INTO "whatsapp"."outbox" (
     '{}'::jsonb, 'QUEUED', 'default'
 )
 ON CONFLICT ("outbox_id") DO NOTHING;
+
+-- 6. Dummy Datasource (Koneksi Database Eksternal Dinamis)
+-- Tabel ini berada di schema "core"."datasource" (pada database utama atau database WHATSAPP).
+-- Digunakan oleh action command WhatsApp (misal: Approval HRMS) untuk terhubung secara runtime ke database eksternal (PostgreSQL, MySQL, dsb).
+INSERT INTO "core"."datasource" (
+    "created", "modified", "is_removed", "read_only", "enable", "properties",
+    "description", "datasource_id", "datasource_name", "engine", "database",
+    "user", "password", "host", "port", "url", "status"
+) VALUES 
+(
+    NOW(), NOW(), FALSE, FALSE, TRUE, '{}'::jsonb,
+    'Database HRMS NJRM', 'HRMS.NJRM', 'HRMS.NJRM', 
+    'django.db.backends.postgresql', 'HRMS.NJRM', 'postgres', 
+    '\x1cfe9601f12f195729d819525de3970c290c1e4592cf0488a1d0b4efd38c347a8c3e9da73f53863a'::bytea, 
+    '192.168.6.25', 17296, NULL, 'draft'
+)
+ON CONFLICT ("datasource_id") DO UPDATE 
+SET "datasource_name" = EXCLUDED."datasource_name",
+    "engine" = EXCLUDED."engine",
+    "database" = EXCLUDED."database",
+    "user" = EXCLUDED."user",
+    "password" = EXCLUDED."password",
+    "host" = EXCLUDED."host",
+    "port" = EXCLUDED."port",
+    "url" = EXCLUDED."url";
+
+-- 7. Dummy Command: Tipe PY (Koneksi ke Datasource & Kirim Balasan via Outbox)
+-- Perintah ini mengeksekusi kode Python secara dinamis saat user mengirim pesan 'testds'.
+-- Mengambil konfigurasi database dari Datasource 'HRMS.TRIAL', menjalankan query SELECT 1, lalu mengirim hasil ke WhatsApp user.
+INSERT INTO "whatsapp"."command" (
+    "created", "modified", "is_removed", "read_only", "enable", "properties",
+    "command_id", "command_name", "command", "command_type", "process", 
+    "check_parameter", "check_permission", "is_finish", "status", "session_id"
+) VALUES 
+(
+    NOW(), NOW(), FALSE, FALSE, TRUE, '{}'::jsonb,
+    'CMD_TEST_DS', 'Test Koneksi Datasource HRMS.TRIAL', 'testds', 'py', 
+    ARRAY['import logging
+from core.models import Datasource
+from core.utils import database
+from whatsapp.models import Outbox
+
+logger = logging.getLogger(__name__)
+
+try:
+    ds = Datasource.objects.get(datasource_id=''HRMS.TRIAL'')
+    res = database.fetchone(ds.connection(), ''SELECT 1 as test, current_database() as db, now() as db_time'')
+    reply = (
+        ''✅ *Koneksi Datasource Berhasil!*\n\n''
+        f''• ID: *{ds.datasource_id}*\n''
+        f''• Host: `{ds.host}:{ds.port}`\n''
+        f''• Database: *{res.db}*\n''
+        f''• Query Result (SELECT 1): `{res.test}`\n''
+        f''• DB Timestamp: `{res.db_time}`''
+    )
+except Exception as e:
+    logger.error(f''Error datasource: {e}'', exc_info=True)
+    reply = f''❌ *Koneksi Datasource Gagal:*\n{e}''
+
+Outbox.objects.using(''WHATSAPP'').create(
+    message=reply,
+    message_type=''conversation'',
+    outbox_for=inbox.inbox_by,
+    session_id=inbox.session_id,
+    properties=dict(command=command_active.command.pk, inbox=inbox.inbox_id),
+    data=dict(reply_to=inbox.inbox_id, quoted=inbox.data),
+)'], 
+    FALSE, FALSE, TRUE, 'ACTIVE', NULL
+)
+ON CONFLICT ("command_id") DO UPDATE 
+SET "command" = EXCLUDED."command", "process" = EXCLUDED."process", "command_type" = EXCLUDED."command_type";
 ```
+
+> [!TIP]
+> **Input Datasource via Django ORM atau REST API:**
+> Selain SQL langsung, pembuatan `Datasource` juga dapat dilakukan melalui Python Django ORM atau REST API (`/core/api/datasource/`). Keuntungannya, password teks biasa (`plain text`) akan dienkripsi secara otomatis menggunakan AES-GCM (`EncryptedCharField`):
+> ```bash
+> python manage.py shell -c "from core.models import Datasource; Datasource.objects.update_or_create(datasource_id='HRMS.TRIAL', defaults=dict(datasource_name='HRMS.TRIAL', engine='django.db.backends.postgresql', database='HRMS.SNI.OKT', user='postgres', password='111111', host='192.168.123.87', port=5432, enable=True))"
+> ```

@@ -20,13 +20,15 @@ MaterializedPathTree = MP_Node
 AdjacencyListTree = AL_Node
 NestedSetTree = NS_Node
 
-__all__: [
-    Tracker,
-    MonitorField,
-    History,
-    MaterializedPathTree,
-    AdjacencyListTree,
-    NestedSetTree,
+__all__ = [
+    'Tracker',
+    'MonitorField',
+    'History',
+    'MaterializedPathTree',
+    'AdjacencyListTree',
+    'NestedSetTree',
+    'Base',
+    'BaseStatus',
 ]
 
 
