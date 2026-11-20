@@ -7,23 +7,37 @@ SECURE_SSL_REDIRECT: false
 
 SITE_ID: 1
 
-DATABASES_DEFAULT: postgres
-
-DATABASES.postgres.ENGINE: django.db.backends.postgresql
-DATABASES.postgres.HOST: 127.0.0.1
-DATABASES.postgres.PORT: 5432
-DATABASES.postgres.NAME: microservice
-DATABASES.postgres.USER: postgres
-DATABASES.postgres.PASSWORD: root
-
-CHANNEL_DEFAULT: memory
+CHANNEL_DEFAULT: redis
 CHANNEL_MSGPACK: true
 
-
 CACHES_DEFAULT: dummy
+CACHES.redis.LOCATION: redis://erpro:erpro@127.0.0.1:6379
 
 INSTALLED_MODULE:
   - core
 
 MANAGE_CLEAR_CONSOLE: true
 NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]
+
+WHATSAPP.PORT: 3002
+WHATSAPP.WEBHOOK_URL: http://127.0.0.1:8008/whatsapp/webhook/ # ws://127.0.0.1:8000/ws/whatsapp/webhook/
+
+DATABASES_DEFAULT: postgres
+DATABASES.postgres.ENGINE: django.db.backends.postgresql
+DATABASES.postgres.HOST: 127.0.0.1
+DATABASES.postgres.PORT: 5432
+DATABASES.postgres.NAME: microservice
+DATABASES.postgres.USER: postgres
+DATABASES.postgres.PASSWORD: toor
+
+DATABASES.WHATSAPP:
+    ENGINE: django.db.backends.postgresql
+    HOST: localhost
+    NAME: 192.168.6.52
+    USER: postgres
+    PASSWORD: toor
+    PORT: 5432
+    MIGRATE: false
+    ATOMIC_REQUESTS: false
+    CONN_HEALTH_CHECKS: true
+    VERSION_CHECK: false

@@ -16,8 +16,8 @@ bin/nginx/nginx.pid
 empty.zip
 
 # ignore module here
-whatsapp/machine/**/sessions/
-whatsapp/machine/**/session/
+whatsapp/machine/src/sessions/
+whatsapp/machine/dist/
 
 # force include here
 !bin/nodejs/node_modules/
