@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang='id'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Microservice Dashboard</title>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js'></script>
+    <script src='https://cdn.tailwindcss.com'></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Montserrat:wght@300;400;600&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+
+        .ui-overlay {
+            position: relative;
+            z-index: 10;
+            pointer-events: none; /* Klik tembus ke canvas jika tidak ada elemen UI */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding-bottom: 40px;
+        }
+
+        .ps2-text {
+            color: #fff;
+            text-shadow: 0 0 15px rgba(0, 162, 255, 0.6);
+            letter-spacing: 0.4em;
+            opacity: 0;
+            transform: translateY(15px);
+            animation: ps2-fade-in 2.5s ease-out forwards 0.5s;
+        }
+
+        @keyframes ps2-fade-in {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            z-index: 5;
+            background: linear-gradient(
+                to bottom,
+                rgba(18, 16, 16, 0) 50%,
+                rgba(0, 0, 0, 0.08) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        .ps-symbols {
+            font-size: 20px;
+            display: flex;
+            gap: 2rem;
+            color: rgba(255, 255, 255, 0.15);
+            margin-top: 2rem;
+            text-shadow: 0 0 10px rgba(0, 162, 255, 0.3);
+        }
+
+        .menu-container {
+            width: 100%;
+            height: 160px;
+            display: flex;
+            align-items: center;
+            padding-left: 10%;
+            pointer-events: auto;
+            overflow-x: hidden;
+            margin-top: auto;
+            opacity: 0;
+            animation: ps2-fade-in 2s ease-out forwards 1.2s;
+        }
+
+        .menu-wrapper {
+            display: flex;
+            gap: 15px;
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .menu-item {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            flex-shrink: 0;
+            border-radius: 4px;
+        }
+
+        .menu-item.active {
+            width: 140px;
+            height: 140px;
+            background: rgba(0, 162, 255, 0.15);
+            border: 2px solid #00a2ff;
+            box-shadow: 0 0 30px rgba(0, 162, 255, 0.3);
+            transform: translateY(-10px);
+        }
+
+        .menu-icon { font-size: 2.5rem; margin-bottom: 8px; }
+
+        .menu-label {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            opacity: 0.6;
+        }
+
+        .active .menu-label { opacity: 1; color: #00a2ff; }
+
+        .info-box {
+            position: absolute;
+            left: 10%;
+            bottom: 210px;
+            text-align: left;
+            pointer-events: none;
+            opacity: 0;
+            animation: ps2-fade-in 2s ease-out forwards 1.5s;
+        }
+
+        #iframe-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 100; /* Di atas segalanya */
+            background: rgba(0, 0, 0, 0.9);
+            display: none; /* Sembunyi awalnya */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            backdrop-filter: blur(15px);
+        }
+
+        .iframe-content {
+            width: 95%;
+            height: 85%;
+            border: 2px solid #00a2ff;
+            box-shadow: 0 0 40px rgba(0, 162, 255, 0.4);
+            background: #000;
+            position: relative;
+        }
+
+        iframe { width: 100%; height: 100%; border: none; }
+
+        .close-btn {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+            letter-spacing: 3px;
+            pointer-events: auto;
+            text-transform: uppercase;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .close-btn:hover { color: #00a2ff; }
+    </style>
+</head>
+<body>
+
+<div id='canvas-container'></div>
+<div class='scanlines'></div>
+
+<div id="iframe-modal">
+    <div class="iframe-content">
+        <div class="close-btn" onclick="closeModal()">[ ✕ ] TUTUP (ESC)</div>
+        <iframe id="menu-iframe" src=""></iframe>
+    </div>
+</div>
+
+<div class='ui-overlay'>
+    <div class='text-center px-6 pt-20'>
+        <h1 class='ps2-text text-5xl md:text-7xl font-bold mb-4 tracking-[0.2em]'>
+            MICROSERVICE <span class='text-blue-500/80'>SIAP</span>
+        </h1>
+        <p class='ps2-text text-xs md:text-sm text-blue-200/40 font-light mb-8 tracking-[0.5em] uppercase delay-500'>
+            Konfigurasi Berhasil
+        </p>
+        <div class="ps2-text ps-symbols delay-1000 justify-center">
+            <span>△</span> <span>○</span> <span>✕</span> <span>□</span>
+        </div>
+    </div>
+
+    <div class='info-box'>
+        <h2 id='current-title' class='text-2xl font-bold text-white tracking-widest'>DOKUMENTASI</h2>
+        <p id='current-desc' class='font-['Montserrat'] text-[10px] text-white/50 tracking-[0.2em] uppercase'>PANDUAN SISTEM</p>
+    </div>
+
+    <div class='menu-container'>
+        <div id='menu-wrapper' class='menu-wrapper'>
+            </div>
+    </div>
+</div>
+
+<script>
+    const menuData = [
+        {
+            title: 'WHATSAPP BOT',
+            desc: 'PANDUAN INTEGRASI SISTEM BOT DENGAN WHATSAPP',
+            icon: '🤖',
+            link: '{{ WHATSAPP_DOCS }}'
+        },
+    ];
+
+    let activeIndex = 0;
+    let scene, camera, renderer, starField, ringParticles, core;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000208);
+        scene.fog = new THREE.FogExp2(0x000515, 0.012);
+
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 50);
+
+        renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        create3DWorld();
+        createMenu();
+        setActive(0);
+        animate();
+    }
+
+    function create3DWorld() {
+        const starCount = 1500;
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(starCount * 3);
+
+        for (let i = 0; i < starCount * 3; i++) {
+            starPos[i] = (Math.random() - 0.5) * 150;
+        }
+
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({
+            color: 0x4488ff,
+            size: 0.25,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+
+        starField = new THREE.Points(starGeo, starMat);
+        scene.add(starField);
+
+        const ringCount = 2000;
+        const ringGeo = new THREE.BufferGeometry();
+        const ringPos = new Float32Array(ringCount * 3);
+
+        for (let i = 0; i < ringCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 25 + Math.random() * 5;
+            const spread = (Math.random() - 0.5) * 10;
+
+            ringPos[i * 3] = Math.cos(angle) * radius;
+            ringPos[i * 3 + 1] = spread;
+            ringPos[i * 3 + 2] = Math.sin(angle) * radius;
+        }
+
+        ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPos, 3));
+        const ringMat = new THREE.PointsMaterial({
+            color: 0x00a2ff,
+            size: 0.15,
+            transparent: true,
+            opacity: 0.4,
+            blending: THREE.AdditiveBlending
+        });
+
+        ringParticles = new THREE.Points(ringGeo, ringMat);
+        scene.add(ringParticles);
+
+        const coreGeo = new THREE.SphereGeometry(12, 32, 32);
+        const coreMat = new THREE.MeshPhongMaterial({
+            color: 0x002244,
+            emissive: 0x0044aa,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.1
+        });
+        core = new THREE.Mesh(coreGeo, coreMat);
+        scene.add(core);
+
+        const light = new THREE.PointLight(0x0066ff, 3, 100);
+        light.position.set(0, 0, 0); // Di tengah inti
+        scene.add(light);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const time = Date.now() * 0.0005;
+
+        camera.position.x = Math.sin(time * 0.1) * 60;
+        camera.position.z = Math.cos(time * 0.1) * 60;
+        camera.lookAt(0, 0, 0);
+
+        starField.rotation.y += 0.0005;
+        starField.rotation.x += 0.0002;
+
+        ringParticles.rotation.y -= 0.002;
+        ringParticles.rotation.z += 0.001;
+
+        if (core) {
+            const scale = 1 + Math.sin(time * 2) * 0.05; // Denyut halus
+            core.scale.set(scale, scale, scale);
+            core.rotation.y += 0.005;
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    function createMenu() {
+        const wrapper = document.getElementById('menu-wrapper');
+        menuData.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = `menu-item ${index === activeIndex ? 'active' : ''}`;
+            div.innerHTML = `
+                <div class='menu-icon'>${item.icon}</div>
+                <div class='menu-label'>${item.title}</div>
+            `;
+
+            div.onclick = () => {
+                setActive(index);
+                openModal(item.link);
+            };
+
+            wrapper.appendChild(div);
+        });
+    }
+
+    function setActive(index) {
+        activeIndex = index;
+        const items = document.querySelectorAll('.menu-item');
+        items.forEach((item, i) => {
+            item.classList.toggle('active', i === index);
+        });
+
+        document.getElementById('current-title').innerText = menuData[index].title;
+        document.getElementById('current-desc').innerText = menuData[index].desc;
+
+        const wrapper = document.getElementById('menu-wrapper');
+        const offset = index * -135;
+        wrapper.style.transform = `translateX(${offset}px)`;
+    }
+
+    function openModal(url) {
+        if(!url || url === '#') {
+            console.log("Link tidak tersedia untuk menu ini.");
+            return;
+        }
+
+        const modal = document.getElementById('iframe-modal');
+        const iframe = document.getElementById('menu-iframe');
+
+        iframe.src = url;
+        modal.style.display = 'flex';
+
+        gsap.fromTo("#iframe-modal", {opacity: 0}, {opacity: 1, duration: 0.5});
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('iframe-modal');
+        const iframe = document.getElementById('menu-iframe');
+
+        gsap.to("#iframe-modal", {
+            opacity: 0,
+            duration: 0.3,
+            onComplete: () => {
+                modal.style.display = 'none';
+                iframe.src = "";
+            }
+        });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('iframe-modal');
+        const isModalOpen = modal.style.display === 'flex';
+
+        if (isModalOpen) {
+            if (e.key === 'Escape') closeModal();
+        } else {
+            if (e.key === 'ArrowRight') {
+                if (activeIndex < menuData.length - 1) setActive(activeIndex + 1);
+            } else if (e.key === 'ArrowLeft') {
+                if (activeIndex > 0) setActive(activeIndex - 1);
+            } else if (e.key === 'Enter') {
+                openModal(menuData[activeIndex].link);
+            }
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.onload = init;
+</script>
+</body>
+</html>

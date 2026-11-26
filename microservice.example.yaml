@@ -1,0 +1,46 @@
+ALLOWED_HOSTS:
+  - '*'
+
+DEBUG: true
+
+PORT: 8008
+
+SECURE_SSL_REDIRECT: false
+
+SITE_ID: 1
+
+CHANNEL_DEFAULT: redis
+CHANNEL_MSGPACK: true
+
+CACHES_DEFAULT: redis
+CACHES.redis.LOCATION: redis://{username-redis}:{password-redis}@127.0.0.1:6379
+
+INSTALLED_MODULE:
+  - core
+
+MANAGE_CLEAR_CONSOLE: true
+NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]
+
+WHATSAPP.PORT: 3002
+# ws://127.0.0.1:8008/ws/whatsapp/webhook/ #pastikan port selaras dengan konfigurasi PORT agar tersambung ke websocket
+WHATSAPP.WEBHOOK_URL: http://127.0.0.1:8008/whatsapp/webhook/
+
+DATABASES_DEFAULT: postgres
+DATABASES.postgres.ENGINE: django.db.backends.postgresql
+DATABASES.postgres.HOST: 127.0.0.1
+DATABASES.postgres.PORT: 5432
+DATABASES.postgres.NAME: microservice
+DATABASES.postgres.USER: postgres
+DATABASES.postgres.PASSWORD: {password-database-postgres}
+
+DATABASES.WHATSAPP:
+    ENGINE: django.db.backends.postgresql
+    HOST: localhost
+    NAME: {nama-database-whatsapp}
+    USER: postgres
+    PASSWORD: {password-database-whatsapp}
+    PORT: 5432
+    MIGRATE: false
+    ATOMIC_REQUESTS: false
+    CONN_HEALTH_CHECKS: true
+    VERSION_CHECK: false
