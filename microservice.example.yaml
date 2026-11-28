@@ -17,13 +17,20 @@ CACHES.redis.LOCATION: redis://{username-redis}:{password-redis}@127.0.0.1:6379
 
 INSTALLED_MODULE:
   - core
+  - notification
+
+NOTIFICATION.ONESIGNAL_BASE_URL: https://api.onesignal.com
+NOTIFICATION.NTFY_BASE_URL: https://ntfy.sh
+NOTIFICATION.NTFY_PORT: 8085
 
 MANAGE_CLEAR_CONSOLE: true
 NUMBERING_PATTERN: a-zA-Z0-9.()@#:\[\]
 
 WHATSAPP.PORT: 3002
-# ws://127.0.0.1:8008/ws/whatsapp/webhook/ #pastikan port selaras dengan konfigurasi PORT agar tersambung ke websocket
-WHATSAPP.WEBHOOK_URL: http://127.0.0.1:8008/whatsapp/webhook/
+WHATSAPP.WEBHOOK_URL: ws://127.0.0.1:8008/ws/whatsapp/webhook/
+
+TELEGRAM.PORT: 3003
+TELEGRAM.WEBHOOK_URL: ws://127.0.0.1:8008/ws/telegram/webhook/
 
 DATABASES_DEFAULT: postgres
 DATABASES.postgres.ENGINE: django.db.backends.postgresql
@@ -39,6 +46,18 @@ DATABASES.WHATSAPP:
     NAME: {nama-database-whatsapp}
     USER: postgres
     PASSWORD: {password-database-whatsapp}
+    PORT: 5432
+    MIGRATE: false
+    ATOMIC_REQUESTS: false
+    CONN_HEALTH_CHECKS: true
+    VERSION_CHECK: false
+
+DATABASES.TELEGRAM:
+    ENGINE: django.db.backends.postgresql
+    HOST: localhost
+    NAME: {nama-database-telegram}
+    USER: postgres
+    PASSWORD: {password-database-telegram}
     PORT: 5432
     MIGRATE: false
     ATOMIC_REQUESTS: false

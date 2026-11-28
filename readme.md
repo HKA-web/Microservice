@@ -16,8 +16,8 @@ Buat dan aktifkan virtual environment, kemudian install dependencies:
 python -m venv env
 .\env\Scripts\activate
 
-# Install dependensi (bisa menggunakan requirements-linux.txt atau wheel lokal)
-pip install -r requirements-linux.txt
+# Install dependensi
+pip install -r requirements.txt
 ```
 
 ### 2. Konfigurasi Sistem
@@ -32,3 +32,18 @@ Jalankan migrasi database utama jika diperlukan:
 ```bash
 python manage.py migrate
 ```
+
+### B. ntfy (Self-Hosted Portable + FCM Wakeup)
+1. **Siapkan Binary `ntfy`:**
+   - Pastikan `bin/ntfy/ntfy.exe` tersedia (atau unduh rilis Windows dari [GitHub Releases `binwiederhier/ntfy`](https://github.com/binwiederhier/ntfy/releases)).
+2. **Aktifkan FCM Wakeup *(agar notif masuk saat app Android di-kill)*:**
+   - Unduh **Firebase Service Account JSON** dari Firebase Console (*Project Settings → Service accounts → Generate new private key*).
+   - Letakkan file `.json` tersebut di `notification/engine/ntfy/` *(otomatis diabaikan `.gitignore`)*, lalu arahkan `firebase-key-file` di [server.yml](engine/ntfy/server.yml) ke path file tersebut.
+   - Pastikan aplikasi Android (`ntfy_app`) memakai `android/app/google-services.json` dari project Firebase yang **sama**.
+3. **Jalankan Service (3 terminal):**
+   ```powershell
+   .\env\Scripts\python.exe manage.py runntfy
+   .\env\Scripts\python.exe manage.py runserver 8008
+   .\env\Scripts\python.exe manage.py runhuey --queue notification
+   ```
+   *(Jika key FCM terbaca, terminal `runntfy` akan menampilkan `FCM wakeup aktif` dan server berjalan di `http://127.0.0.1:8085` tanpa login).*

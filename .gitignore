@@ -17,6 +17,8 @@ empty.zip
 
 # ignore module here
 whatsapp/
+telegram/
+notification/
 
 # force include here
 !bin/nodejs/node_modules/
